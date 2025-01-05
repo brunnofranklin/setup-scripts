@@ -14,7 +14,7 @@ show_progress() {
     local empty=$(( bar_width - filled ))
 
     local filled_bar=$(printf "%0.s█" $(seq 1 $filled))
-    local empty_bar=$(printf "%0.s " $(seq 1 $empty))
+    local empty_bar=$(printf "%0.s-" $(seq 1 $empty))
 
     # Mostrar o título e a barra de progresso juntos na mesma linha
     echo -ne "\033[s\033[H"  # Salvar posição do cursor e mover para o topo
@@ -63,7 +63,7 @@ CURRENT_STEP=0
 
 for PACKAGE in "${INSTALLED_PACKAGES[@]}"; do
     if dpkg -l | awk '$1=="ii" && $2=="'$PACKAGE'" {print}' > /dev/null; then
-        sudo apt remove --purge -y "$PACKAGE" > /dev/null 2>&1
+        sudo apt remove --purge -y "$PACKAGE" #> /dev/null 2>&1
     fi
     CURRENT_STEP=$((CURRENT_STEP + 1))
     show_progress "$CURRENT_STEP" "$TOTAL_PACKAGES" "REMOVENDO PACOTES"
