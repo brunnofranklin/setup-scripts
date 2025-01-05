@@ -4,24 +4,37 @@
 CURRENT_USER=$SUDO_USER
 clear
 
-# Função de barra de progresso genérica
-progress_bar() {
+# Função de barra de progresso otimizada para evitar cintilação
+show_progress() {
     local current_step=$1
     local total_steps=$2
-    local bar_width=$3
-    local description=$4
+    local bar_width=50
+    local progress=$(( current_step * 100 / total_steps ))
+    local filled=$(( progress * bar_width / 100 ))
+    local empty=$(( bar_width - filled ))
 
-    local progress=$((current_step * 100 / total_steps))
-    local filled=$((progress * bar_width / 100))
-    local empty=$((bar_width - filled))
+    local filled_bar=$(printf "%0.s█" $(seq 1 $filled))
+    local empty_bar=$(printf "%0.s " $(seq 1 $empty))
 
-    local filled_bar=$(printf "%0.s#" $(seq 1 "$filled"))
-    local empty_bar=$(printf "%0.s." $(seq 1 "$empty"))
+    # Mostrar o título e a barra de progresso juntos na mesma linha
+    echo -ne "\033[s\033[H"  # Salvar posição do cursor e mover para o topo
+    echo -ne "\e[30;42m[${3}]\e[0m |${filled_bar}${empty_bar}| ${progress}% (${current_step}/${total_steps})"
+    echo -ne "\033[u"  # Restaurar posição do cursor
+}
 
-    printf "\r%s [%s%s] %3d%% (%d/%d)" "$description" "$filled_bar" "$empty_bar" "$progress" "$current_step" "$total_steps"
+# Preparar o terminal
+clear
+tput civis  # Esconder o cursor
+
+# Função para exibir o título do bloco
+show_title() {
+    local title=$1
+    clear
+    echo -ne "\e[30;42m[${title}]\e[0m\n"
 }
 
 # --- Bloco 1: Remoção de Pacotes ---
+show_title "REMOVENDO PACOTES"
 INSTALLED_PACKAGES=(
     "apt-transport-https"
     "curl"
@@ -47,19 +60,20 @@ INSTALLED_PACKAGES=(
 
 TOTAL_PACKAGES=${#INSTALLED_PACKAGES[@]}
 CURRENT_STEP=0
-BAR_WIDTH=50
 
-echo -e "\e[32m[REMOVENDO PACOTES]\e[0m"
 for PACKAGE in "${INSTALLED_PACKAGES[@]}"; do
     if dpkg -l | awk '$1=="ii" && $2=="'$PACKAGE'" {print}' > /dev/null; then
         sudo apt remove --purge -y "$PACKAGE" > /dev/null 2>&1
     fi
     CURRENT_STEP=$((CURRENT_STEP + 1))
-    progress_bar "$CURRENT_STEP" "$TOTAL_PACKAGES" "$BAR_WIDTH" "Removendo pacotes"
+    show_progress "$CURRENT_STEP" "$TOTAL_PACKAGES" "REMOVENDO PACOTES"
+    echo "Executando remoção do pacote: $PACKAGE"
 done
 echo -e "\nRemoção de pacotes concluída!"
+sleep 1
 
 # --- Bloco 2: Remoção de Diretórios ---
+show_title "REMOVENDO DIRETÓRIOS"
 CONFIG_DIRS=(
     "/etc/squid/ssl_cert"
     "/var/log/squid"
@@ -68,34 +82,37 @@ CONFIG_DIRS=(
 
 TOTAL_DIRS=${#CONFIG_DIRS[@]}
 CURRENT_STEP=0
-DIR_BAR_WIDTH=50
 
-echo -e "\e[32m[REMOVENDO DIRETÓRIOS]\e[0m"
 for DIR in "${CONFIG_DIRS[@]}"; do
     if [ -d "$DIR" ]; then
         sudo rm -rf "$DIR"
     fi
     CURRENT_STEP=$((CURRENT_STEP + 1))
-    progress_bar "$CURRENT_STEP" "$TOTAL_DIRS" "$DIR_BAR_WIDTH" "Removendo diretórios"
+    show_progress "$CURRENT_STEP" "$TOTAL_DIRS" "REMOVENDO DIRETÓRIOS"
+    echo "Executando remoção do diretório: $DIR"
 done
 echo -e "\nRemoção de diretórios concluída!"
+sleep 1
 
 # --- Bloco 3: Limpeza de Pacotes ---
+show_title "LIMPEZA DE PACOTES"
 TOTAL_CLEAN_STEPS=2
 CURRENT_STEP=0
-CLEAN_BAR_WIDTH=50
 
-echo -e "\e[32m[LIMPEZA DE PACOTES]\e[0m"
 sudo apt autoremove -y > /dev/null 2>&1
 CURRENT_STEP=$((CURRENT_STEP + 1))
-progress_bar "$CURRENT_STEP" "$TOTAL_CLEAN_STEPS" "$CLEAN_BAR_WIDTH" "Autoremove"
+show_progress "$CURRENT_STEP" "$TOTAL_CLEAN_STEPS" "LIMPEZA DE PACOTES"
+echo "Executando autoremove"
 
 sudo apt autoclean -y > /dev/null 2>&1
 CURRENT_STEP=$((CURRENT_STEP + 1))
-progress_bar "$CURRENT_STEP" "$TOTAL_CLEAN_STEPS" "$CLEAN_BAR_WIDTH" "Autoclean"
+show_progress "$CURRENT_STEP" "$TOTAL_CLEAN_STEPS" "LIMPEZA DE PACOTES"
+echo "Executando autoclean"
 echo -e "\nLimpeza de pacotes concluída!"
+sleep 1
 
 # --- Bloco 4: Instalação de Pacotes ---
+show_title "INSTALAÇÃO DE PACOTES"
 INSTALL_PACKAGES=(
     "apt-transport-https"
     "curl"
@@ -118,18 +135,18 @@ INSTALL_PACKAGES=(
 
 TOTAL_INSTALL_PACKAGES=${#INSTALL_PACKAGES[@]}
 CURRENT_STEP=0
-INSTALL_BAR_WIDTH=50
 
-echo -e "\e[32m[INSTALAÇÃO DE PACOTES]\e[0m"
 for PACKAGE in "${INSTALL_PACKAGES[@]}"; do
     sudo apt install -y "$PACKAGE" > /dev/null 2>&1
     CURRENT_STEP=$((CURRENT_STEP + 1))
-    progress_bar "$CURRENT_STEP" "$TOTAL_INSTALL_PACKAGES" "$INSTALL_BAR_WIDTH" "Instalando pacotes"
+    show_progress "$CURRENT_STEP" "$TOTAL_INSTALL_PACKAGES" "INSTALAÇÃO DE PACOTES"
+    echo "Executando instalação do pacote: $PACKAGE"
 done
 echo -e "\nInstalação de pacotes concluída!"
+sleep 1
 
 # --- Bloco 5: Configuração do Fail2Ban ---
-echo -e "\e[32m[CONFIGURAÇÃO DO FAIL2BAN]\e[0m"
+show_title "CONFIGURAÇÃO DO FAIL2BAN"
 sudo tee /etc/fail2ban/jail.local > /dev/null <<EOF
 [DEFAULT]
 bantime = 1h
@@ -155,8 +172,10 @@ bantime = 3600
 EOF
 sudo systemctl restart fail2ban
 echo -e "\nConfiguração do Fail2Ban concluída!"
+sleep 1
 
 # --- Bloco 6: Configuração de Diretórios ---
+show_title "CONFIGURAÇÃO DE DIRETÓRIOS"
 CONFIG_DIRS=(
     "/var/suporte"
     "/var/WUCache"
@@ -164,19 +183,19 @@ CONFIG_DIRS=(
 
 TOTAL_DIRS=${#CONFIG_DIRS[@]}
 CURRENT_STEP=0
-DIR_BAR_WIDTH=50
 
-echo -e "\e[32m[CONFIGURAÇÃO DE DIRETÓRIOS]\e[0m"
 for DIR in "${CONFIG_DIRS[@]}"; do
     sudo mkdir -p "$DIR" > /dev/null 2>&1
     sudo chmod 777 "$DIR"
     CURRENT_STEP=$((CURRENT_STEP + 1))
-    progress_bar "$CURRENT_STEP" "$TOTAL_DIRS" "$DIR_BAR_WIDTH" "Configurando diretórios"
+    show_progress "$CURRENT_STEP" "$TOTAL_DIRS" "CONFIGURAÇÃO DE DIRETÓRIOS"
+    echo "Executando configuração do diretório: $DIR"
 done
 echo -e "\nConfiguração de diretórios concluída!"
+sleep 1
 
 # --- Bloco 7: Configuração do WSUS Offline ---
-echo -e "\e[32m[CONFIGURAÇÃO DO WSUS OFFLINE]\e[0m"
+show_title "CONFIGURAÇÃO DO WSUS OFFLINE"
 cd /var/WUCache
 if [ ! -d "wsusoffline" ]; then
     git clone https://gitlab.com/wsusoffline/wsusoffline.git
@@ -191,9 +210,10 @@ if ! crontab -l | grep -Fxq "$cron_job"; then
     (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
 fi
 echo -e "\nConfiguração do WSUS Offline concluída!"
+sleep 1
 
 # --- Bloco 8: Configuração de Atualizações Automáticas ---
-echo -e "\e[32m[CONFIGURAÇÃO DE ATUALIZAÇÕES AUTOMÁTICAS]\e[0m"
+show_title "CONFIGURAÇÃO DE ATUALIZAÇÕES AUTOMÁTICAS"
 sudo apt install -y unattended-upgrades apt-listchanges > /dev/null 2>&1
 sudo dpkg-reconfigure --priority=low unattended-upgrades > /dev/null 2>&1
 
@@ -206,9 +226,10 @@ Unattended-Upgrade::Automatic-Reboot "true";
 Unattended-Upgrade::Automatic-Reboot-Time "03:00";
 EOF
 echo -e "\nAtualizações automáticas configuradas!"
+sleep 1
 
 # --- Bloco 9: Configuração do Firewall (UFW) ---
-echo -e "\e[32m[CONFIGURAÇÃO DO FIREWALL (UFW)]\e[0m"
+show_title "CONFIGURAÇÃO DO FIREWALL (UFW)"
 sudo ufw default deny incoming > /dev/null 2>&1
 sudo ufw default allow outgoing > /dev/null 2>&1
 sudo ufw allow 22/tcp > /dev/null 2>&1
@@ -218,11 +239,12 @@ sudo ufw allow proto udp from 10.60.9.0/24 to any port 137,138,139 > /dev/null 2
 sudo ufw allow 8000/tcp > /dev/null 2>&1
 sudo ufw limit ssh/tcp > /dev/null 2>&1
 sudo ufw logging on > /dev/null 2>&1
-sudo ufw enable > /dev/null 2>&1
+sudo ufw --force enable > /dev/null 2>&1
 echo -e "\nConfiguração do firewall concluída!"
+sleep 1
 
 # --- Bloco 10: Instalação e Configuração do ClamAV ---
-echo -e "\e[32m[INSTALAÇÃO E CONFIGURAÇÃO DO CLAMAV]\e[0m"
+show_title "INSTALAÇÃO E CONFIGURAÇÃO DO CLAMAV"
 sudo apt install -y clamav clamav-daemon > /dev/null 2>&1
 sudo systemctl stop clamav-freshclam > /dev/null 2>&1
 sudo freshclam > /dev/null 2>&1
@@ -232,9 +254,10 @@ sudo systemctl enable clamav-daemon > /dev/null 2>&1
 # Configurar varredura de vírus periódica
 echo "0 3 * * * root clamscan -r / --remove --log=/var/log/clamav/scan.log" | sudo tee -a /etc/crontab > /dev/null
 echo -e "\nConfiguração do ClamAV concluída!"
+sleep 1
 
 # --- Bloco 11: Configuração do Samba e Squid ---
-echo -e "\e[32m[CONFIGURAÇÃO DO SAMBA E SQUID]\e[0m"
+show_title "CONFIGURAÇÃO DO SAMBA E SQUID"
 
 # Configuração do Samba
 sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.bak > /dev/null 2>&1
@@ -376,3 +399,6 @@ sudo systemctl restart squid > /dev/null 2>&1
 # Finalizando
 echo -e "\nWSUS Offline configurado com sucesso. As atualizações serão baixadas e processadas automaticamente todos os dias às 02:00."
 su - "$CURRENT_USER" -c "bash /var/WUCache/wsusoffline/sh/download-updates.bash all-win-x64 ptb -includewddefs" > /dev/null 2>&1
+
+# Mostrar o cursor novamente
+tput cnorm
