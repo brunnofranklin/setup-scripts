@@ -1,0 +1,105 @@
+{
+  "Application": {
+    "Name": "PNA Helpdesk",
+    "Version": "2.0.1",
+    "Description": "Sistema de Helpdesk PNA com recursos avançados de segurança e monitoramento"
+  },
+  "Installation": {
+    "DefaultPath": "C:\\PNAHelpdesk",
+    "RequiredSpace": "5GB",
+    "RequiredMemory": "2GB",
+    "SupportedOS": ["Windows 10", "Windows Server 2016", "Windows Server 2019", "Windows Server 2022"]
+  },
+  "Security": {
+    "TokenValidation": {
+      "Enabled": true,
+      "MinLength": 32,
+      "RequireComplexity": true,
+      "ForbiddenTokens": ["123456789", "example", "test", "demo", "sample", "password"]
+    },
+    "PasswordPolicy": {
+      "MinLength": 8,
+      "RequireUppercase": true,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSpecialChars": true
+    },
+    "FileIntegrity": {
+      "Enabled": true,
+      "Algorithm": "SHA256",
+      "ValidateOnStartup": true
+    },
+    "NetworkSecurity": {
+      "ValidateConnections": true,
+      "TimeoutSeconds": 10,
+      "AllowedProtocols": ["HTTPS", "WSS"],
+      "RequiredTLSVersion": "1.2"
+    }
+  },
+  "Logging": {
+    "DefaultLevel": "INFO",
+    "WriteToConsole": true,
+    "WriteToFile": true,
+    "MaxLogFileSize": "100MB",
+    "MaxLogFiles": 10,
+    "LogRotation": "Daily"
+  },
+  "WebSocket": {
+    "DefaultTimeout": 30000,
+    "KeepAliveInterval": 30,
+    "MaxConnections": 100,
+    "BufferSize": 4096,
+    "CompressionEnabled": true
+  },
+  "Backup": {
+    "Enabled": true,
+    "MaxBackups": 5,
+    "AutomaticBackup": true,
+    "BackupSchedule": "Daily",
+    "CompressionLevel": "Optimal"
+  },
+  "ResourceMonitoring": {
+    "Enabled": true,
+    "MemoryThreshold": 512,
+    "CpuThreshold": 80,
+    "DiskThreshold": 5,
+    "MonitoringInterval": 60
+  },
+  "Recovery": {
+    "AutoRecoveryEnabled": true,
+    "MaxRecoveryAttempts": 3,
+    "RecoveryDelay": 5,
+    "CreateRecoveryPoints": true
+  },
+  "Dependencies": {
+    "RequiredModules": [
+      "System.IO.Compression.FileSystem",
+      "System.Net.WebSockets",
+      "System.Security.Cryptography"
+    ],
+    "DownloadUrls": {
+      "PNACore": "https://releases.pna.com/core/latest.zip",
+      "Dependencies": "https://releases.pna.com/deps/dependencies.zip",
+      "WebSocketLib": "https://releases.pna.com/libs/websocket.dll",
+      "AuthModule": "https://releases.pna.com/auth/auth-module.zip"
+    },
+    "FileHashes": {
+      "PNACore": "sha256:example_hash_for_pnacore_package",
+      "Dependencies": "sha256:example_hash_for_dependencies",
+      "WebSocketLib": "sha256:example_hash_for_websocket_dll",
+      "AuthModule": "sha256:example_hash_for_auth_module"
+    }
+  },
+  "Performance": {
+    "MemoryOptimization": true,
+    "GarbageCollection": "Aggressive",
+    "ThreadPoolSize": 10,
+    "CacheSize": "256MB"
+  },
+  "Notifications": {
+    "EmailEnabled": false,
+    "SMTPServer": "",
+    "EmailFrom": "noreply@pna.com",
+    "NotificationLevels": ["ERROR", "CRITICAL"]
+  }
+}
